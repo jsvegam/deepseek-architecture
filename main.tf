@@ -115,3 +115,10 @@ output "eks_cluster_endpoint" {
 output "eks_cluster_ca_certificate" {
   value = module.eks.cluster_certificate_authority_data
 }
+
+
+
+module "ecr" {
+  source    = "./modules/ecr"
+  repo_name = "deepseek-app"
+}
