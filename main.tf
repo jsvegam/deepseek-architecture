@@ -70,43 +70,43 @@ module "vpc_ohio" {
   single_nat_gateway = true
 }
 
-module "msk" {
-  source = "./modules/msk"
-  providers = {
-    aws = aws.ohio
-  }
+# module "msk" {
+#   source = "./modules/msk"
+#   providers = {
+#     aws = aws.ohio
+#   }
 
-  vpc_id          = module.vpc_ohio.vpc_id
-  private_subnets = module.vpc_ohio.private_subnets
-}
+#   vpc_id          = module.vpc_ohio.vpc_id
+#   private_subnets = module.vpc_ohio.private_subnets
+# }
 
-module "glue_schema" {
-  source = "./modules/glue_schema"
-  providers = {
-    aws = aws.ohio
-  }
-}
+# module "glue_schema" {
+#   source = "./modules/glue_schema"
+#   providers = {
+#     aws = aws.ohio
+#   }
+# }
 
-# Virginia resources (S3 and RDS)
-module "s3" {
-  source = "./modules/s3"
-  providers = {
-    aws = aws.virginia
-  }
+# # Virginia resources (S3 and RDS)
+# module "s3" {
+#   source = "./modules/s3"
+#   providers = {
+#     aws = aws.virginia
+#   }
 
-  bucket_name = "jsvegam2025"
-  vpc_id      = module.vpc_virginia.vpc_id
-}
+#   bucket_name = "jsvegam2025"
+#   vpc_id      = module.vpc_virginia.vpc_id
+# }
 
-module "rds" {
-  source = "./modules/rds"
-  providers = {
-    aws = aws.virginia
-  }
+# module "rds" {
+#   source = "./modules/rds"
+#   providers = {
+#     aws = aws.virginia
+#   }
 
-  vpc_id          = module.vpc_virginia.vpc_id
-  private_subnets = module.vpc_virginia.private_subnets
-}
+#   vpc_id          = module.vpc_virginia.vpc_id
+#   private_subnets = module.vpc_virginia.private_subnets
+# }
 
 output "eks_cluster_endpoint" {
   value = module.eks.cluster_endpoint
@@ -119,6 +119,36 @@ output "eks_cluster_ca_certificate" {
 
 
 module "ecr" {
+  providers = {
+    aws = aws.virginia
+  }
   source    = "./modules/ecr"
   repo_name = "deepseek-app"
+
 }
+
+module "hybrid_node_ohio" {
+  source = "./modules/hybrid-node"
+
+  providers = {
+    aws          = aws.ohio       # EC2/SSM en us-east-2
+    aws.eks_home = aws.virginia   # Control plane EKS en us-east-1
+  }
+
+  eks_cluster_name   = "my-eks-cluster"
+  eks_cluster_region = "us-east-1"  # región del control plane EKS
+
+  hybrid_region      = "us-east-2"  # 👈 requerido: región donde corre el EC2 híbrido
+  hybrid_vpc_id      = module.vpc_ohio.vpc_id
+  hybrid_subnet_id   = module.vpc_ohio.private_subnets[0]
+
+  instance_type       = "t3.small"
+  key_name            = null
+  create_access_entry = true
+
+  tags = {
+    Project = "deepseek"
+    Env     = "lab"
+  }
+}
+
