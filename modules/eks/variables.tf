@@ -91,3 +91,7 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+variable "manage_aws_auth" {
+  type    = bool
+  default = false
+}

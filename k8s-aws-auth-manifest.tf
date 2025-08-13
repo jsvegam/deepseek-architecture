@@ -1,23 +1,15 @@
-variable "account_b_node_role_arn" {
-  type        = string
-  description = "ARN del rol IAM del nodo híbrido en Account B (Ohio)"
-}
-
-# Pega aquí lo que HOY tenga mapRoles (si lo conoces). Si no tienes nada, deja "[]".
-locals {
-  existing_map_roles_yaml = <<-YAML
-  []
-  YAML
-}
+# Gestiona el ConfigMap aws-auth SOLO con Terraform (sin kubectl, sin import)
+# Requiere que var.account_b_node_role_arn esté definido en variables.tf (y valor en terraform.auto.tfvars)
 
 locals {
-  existing_map_roles = try(yamldecode(local.existing_map_roles_yaml), [])
-  hybrid_entry = {
-    rolearn  = var.account_b_node_role_arn
-    username = "system:node:{{EC2PrivateDNSName}}"
-    groups   = ["system:bootstrappers", "system:nodes"]
-  }
-  final_map_roles = concat(local.existing_map_roles, [local.hybrid_entry])
+  # Rol cross-account del nodo híbrido (Account B / Ohio)
+  hybrid_map_roles = [
+    {
+      rolearn  = var.account_b_node_role_arn
+      username = "system:node:{{EC2PrivateDNSName}}"
+      groups   = ["system:bootstrappers", "system:nodes"]
+    }
+  ]
 }
 
 resource "kubernetes_manifest" "aws_auth" {
@@ -29,26 +21,16 @@ resource "kubernetes_manifest" "aws_auth" {
       namespace = "kube-system"
     }
     data = {
-      mapRoles = yamlencode(local.final_map_roles)
+      mapRoles = yamlencode(local.hybrid_map_roles)
     }
   }
 
-  field_manager   = "terraform"
-  force_conflicts = true
-  depends_on      = [time_sleep.wait_eks_propagation]
-}
-
-
-resource "null_resource" "delete_aws_auth" {
-  depends_on = [module.eks.cluster_id]
-
-  triggers = {
-    always_run = timestamp()
+  # Server-Side Apply con field_manager como bloque (sintaxis correcta)
+  field_manager {
+    name            = "terraform"
+    force_conflicts = true
   }
 
-  provisioner "local-exec" {
-    command = <<-EOT
-      kubectl delete configmap aws-auth -n kube-system --ignore-not-found --kubeconfig <(echo '${module.eks.kubeconfig}')
-    EOT
-  }
+  # Espera a que el cluster esté disponible (evita carreras)
+  depends_on = [time_sleep.wait_eks_propagation]
 }
