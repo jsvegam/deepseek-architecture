@@ -4,9 +4,7 @@
 module "vpc_virginia" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.0.0"
-  providers = {
-    aws = aws.virginia
-  }
+  providers = { aws = aws.virginia }
 
   name = "vpc-virginia"
   cidr = "10.0.0.0/16"
@@ -18,18 +16,14 @@ module "vpc_virginia" {
   enable_nat_gateway   = true
   single_nat_gateway   = true
   enable_dns_hostnames = true
-  # enable_dns_support   = true  # (por defecto es true; descomenta si lo deseas explícito)
 
-  # Etiquetas necesarias para LoadBalancers internos (privadas)
   private_subnet_tags = {
-    "kubernetes.io/role/internal-elb"         = "1"
-    "kubernetes.io/cluster/my-eks-cluster"    = "shared"
+    "kubernetes.io/role/internal-elb"      = "1"
+    "kubernetes.io/cluster/my-eks-cluster" = "shared"
   }
-
-  # Etiquetas necesarias para LoadBalancers públicos (públicas)
   public_subnet_tags = {
-    "kubernetes.io/role/elb"                  = "1"
-    "kubernetes.io/cluster/my-eks-cluster"    = "shared"
+    "kubernetes.io/role/elb"               = "1"
+    "kubernetes.io/cluster/my-eks-cluster" = "shared"
   }
 }
 
@@ -38,17 +32,13 @@ module "vpc_virginia" {
 ############################################
 module "eks" {
   source = "./modules/eks"
-  providers = {
-    aws = aws.virginia
-  }
+  providers = { aws = aws.virginia }
 
   cluster_name    = "my-eks-cluster"
   cluster_version = "1.27"
+  vpc_id          = module.vpc_virginia.vpc_id
+  subnet_ids      = module.vpc_virginia.private_subnets
 
-  vpc_id     = module.vpc_virginia.vpc_id
-  subnet_ids = module.vpc_virginia.private_subnets
-
-  # Node group configuration
   desired_size   = 2
   max_size       = 3
   min_size       = 1
@@ -56,18 +46,18 @@ module "eks" {
   capacity_type  = "SPOT"
   disk_size      = 20
 
-  tags = {
-    Environment = "production"
-  }
+  # 👇 importante para que puedas usar aws-auth (y más adelante Access Entries)
+  # Asegúrate de añadir 'access_config' dentro del recurso aws_eks_cluster en modules/eks
+  # (ver punto 3)
+  tags = { Environment = "production" }
 }
 
 ############################################
-# Espera de propagación del EKS (evita carreras)
-# Requiere provider "time" en providers.tf
+# Espera de propagación tras crear EKS
 ############################################
 resource "time_sleep" "wait_eks_propagation" {
   depends_on      = [module.eks]
-  create_duration = "90s" # ajusta a 120-180s si lo necesitas
+  create_duration = "90s"
 }
 
 ############################################
@@ -90,15 +80,16 @@ module "vpc_ohio" {
 }
 
 ############################################
-# Hybrid Node (Account B + Account A)
+# Nodo Híbrido (Account B en Ohio) — sin AccessEntry
 ############################################
 module "hybrid_node_ohio" {
-  count  = var.enable_hybrid ? 1 : 0
-  source = "./modules/hybrid-node"
+  count      = var.enable_hybrid ? 1 : 0
+  source     = "./modules/hybrid-node"
+  depends_on = [time_sleep.wait_eks_propagation]
 
   providers = {
     aws          = aws.ohio      # EC2/SSM/IAM en Account B (Ohio)
-    aws.eks_home = aws.virginia  # EKS en Account A (Virginia)
+    aws.eks_home = aws.virginia  # Se mantiene, pero NO crearemos AccessEntry
   }
 
   eks_cluster_name    = var.eks_cluster_name
@@ -111,13 +102,34 @@ module "hybrid_node_ohio" {
   instance_type       = "t3.small"
   key_name            = null
 
-  # 👇 desactivar Access Entry (requisito “misma cuenta”).
+  # ❗ Cross-account → NO AccessEntry (requeriría misma cuenta)
   create_access_entry = false
 
   tags = {
     Project = "deepseek"
     Env     = "lab"
   }
+}
+
+############################################
+# ECR (en Virginia)
+############################################
+module "ecr" {
+  source    = "./modules/ecr"
+  providers = { aws = aws.virginia }
+  repo_name = "deepseek-app"
+  # Sugerencia dentro del módulo ecr: force_delete = true para destrucciones limpias
+}
+
+############################################
+# Outputs
+############################################
+output "eks_cluster_endpoint" {
+  value = module.eks.cluster_endpoint
+}
+
+output "eks_cluster_ca_certificate" {
+  value = module.eks.cluster_certificate_authority_data
 }
 
 
@@ -150,25 +162,3 @@ module "hybrid_node_ohio" {
 #   private_subnets = module.vpc_virginia.private_subnets
 # }
 
-############################################
-# Outputs
-############################################
-output "eks_cluster_endpoint" {
-  value = module.eks.cluster_endpoint
-}
-
-output "eks_cluster_ca_certificate" {
-  value = module.eks.cluster_certificate_authority_data
-}
-
-############################################
-# ECR (en Virginia) – opcional
-############################################
-module "ecr" {
-  providers = {
-    aws = aws.virginia
-  }
-  source    = "./modules/ecr"
-  repo_name = "deepseek-app"
-  # Sugerencia: si vas a destruir a menudo, agrega force_delete=true dentro del módulo ecr
-}

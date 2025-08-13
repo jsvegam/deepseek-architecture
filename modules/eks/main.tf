@@ -108,9 +108,9 @@ resource "aws_eks_cluster" "cluster" {
   }
 
 
+  # 👇 permite usar aws-auth y/o Access Entries
   access_config {
     authentication_mode = "API_AND_CONFIG_MAP"
-    # opcional pero útil si creaste el cluster con TF:
     bootstrap_cluster_creator_admin_permissions = true
   }
 
