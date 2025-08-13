@@ -43,7 +43,7 @@ module "eks" {
   disk_size      = 20
 
 
-  manage_aws_auth = var.manage_aws_auth   # 👈 forward the flag
+  manage_aws_auth = false   # 👈 forward the flag
   tags = { Environment = "production" }
 }
 
