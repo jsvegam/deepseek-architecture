@@ -18,13 +18,11 @@ resource "kubernetes_config_map_v1" "aws_auth" {
 
   data = {
     mapRoles = yamlencode([
-      # Rol para los nodos del EKS
       {
         rolearn  = module.eks.eks_managed_node_groups.main.iam_role_arn
         username = "system:node:{{EC2PrivateDNSName}}"
         groups   = ["system:bootstrappers", "system:nodes"]
       },
-      # Rol cross-account (Account B)
       {
         rolearn  = var.account_b_node_role_arn
         username = "system:node:{{EC2PrivateDNSName}}"
@@ -34,7 +32,7 @@ resource "kubernetes_config_map_v1" "aws_auth" {
   }
 
   depends_on = [
-    time_sleep.wait_for_cluster,
+    time_sleep.wait_eks_propagation,
     module.eks.eks_managed_node_groups
   ]
 }
