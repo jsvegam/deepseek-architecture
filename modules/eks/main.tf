@@ -93,8 +93,6 @@ resource "aws_security_group_rule" "nodes_ingress_cluster" {
   type                     = "ingress"
 }
 
-
-# Main EKS Cluster Resource
 resource "aws_eks_cluster" "cluster" {
   name     = var.cluster_name
   role_arn = aws_iam_role.cluster.arn
@@ -107,13 +105,10 @@ resource "aws_eks_cluster" "cluster" {
     endpoint_public_access  = var.endpoint_public_access
   }
 
-
-  # 👇 permite usar aws-auth y/o Access Entries
   access_config {
-    authentication_mode = "API_AND_CONFIG_MAP"
+    authentication_mode                         = "API_AND_CONFIG_MAP"
     bootstrap_cluster_creator_admin_permissions = true
   }
-  
 
   depends_on = [
     aws_iam_role_policy_attachment.cluster_eks_policy
@@ -157,27 +152,6 @@ resource "aws_eks_node_group" "nodes" {
   depends_on = [
     aws_iam_role_policy_attachment.node_worker_policy,
     aws_iam_role_policy_attachment.node_ecr_policy,
-    aws_iam_role_policy_attachment.node_cni_policy,
-    kubernetes_config_map.aws_auth
+    aws_iam_role_policy_attachment.node_cni_policy
   ]
-}
-
-resource "kubernetes_config_map" "aws_auth" {
-
-  count = var.manage_aws_auth ? 1 : 0
-  
-  metadata {
-    name      = "aws-auth"
-    namespace = "kube-system"
-  }
-
-  data = {
-    mapRoles = yamlencode([{
-      rolearn  = aws_iam_role.nodes.arn
-      username = "system:node:{{EC2PrivateDNSName}}"
-      groups   = ["system:bootstrappers", "system:nodes"]
-    }])
-  }
-
-  depends_on = [aws_eks_cluster.cluster]
 }

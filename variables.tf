@@ -10,7 +10,3 @@ variable "enable_hybrid" {
   description = "Toggle hybrid node module"
 }
 
-variable "account_b_node_role_arn" {
-  type        = string
-  description = "ARN of the hybrid node IAM role in Account B (Ohio)"
-}

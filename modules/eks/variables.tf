@@ -1,96 +1,46 @@
-# modules/eks/variables.tf
 variable "cluster_name" {
-  description = "Name of the EKS cluster"
   type        = string
+  description = "EKS cluster name"
 }
 
 variable "cluster_version" {
-  description = "Kubernetes version"
   type        = string
-  default     = "1.24"
+  description = "EKS version"
 }
 
 variable "vpc_id" {
-  description = "VPC ID where the cluster will be deployed"
   type        = string
+  description = "VPC ID for the cluster"
 }
 
 variable "subnet_ids" {
-  description = "List of subnet IDs for the cluster"
   type        = list(string)
+  description = "Subnet IDs for the cluster"
 }
 
-variable "desired_size" {
-  description = "Desired number of worker nodes"
-  type        = number
-  default     = 2
-}
-
-variable "max_size" {
-  description = "Maximum number of worker nodes"
-  type        = number
-  default     = 3
-}
-
-variable "min_size" {
-  description = "Minimum number of worker nodes"
-  type        = number
-  default     = 1
-}
+variable "desired_size" { type = number }
+variable "min_size"     { type = number }
+variable "max_size"     { type = number }
 
 variable "instance_types" {
-  description = "List of EC2 instance types for worker nodes"
-  type        = list(string)
-  default     = ["t3.medium"]
-}
-
-variable "ami_type" {
-  description = "AMI type for worker nodes"
-  type        = string
-  default     = "AL2_x86_64"
+  type = list(string)
 }
 
 variable "capacity_type" {
-  description = "Capacity type for nodes (ON_DEMAND or SPOT)"
-  type        = string
-  default     = "ON_DEMAND"
+  type = string
 }
 
 variable "disk_size" {
-  description = "Disk size for worker nodes"
-  type        = number
-  default     = 20
-}
-
-variable "key_name" {
-  description = "SSH key name for worker nodes"
-  type        = string
-  default     = null
-}
-
-variable "remote_access_sg_ids" {
-  description = "List of security group IDs for remote access"
-  type        = list(string)
-  default     = []
-}
-
-variable "endpoint_private_access" {
-  description = "Enable private access to the Kubernetes API server"
-  type        = bool
-  default     = false
-}
-
-variable "endpoint_public_access" {
-  description = "Enable public access to the Kubernetes API server"
-  type        = bool
-  default     = true
+  type = number
 }
 
 variable "tags" {
-  description = "Additional tags for all resources"
   type        = map(string)
   default     = {}
+  description = "Tags to apply to EKS resources"
 }
+
+# ⬇️ IMPORTANT: let the root decide who manages aws-auth (we'll set this to false in root)
 variable "manage_aws_auth" {
   type    = bool
   default = false

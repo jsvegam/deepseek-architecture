@@ -17,38 +17,67 @@ module "vpc_virginia" {
 
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb"      = "1"
-    "kubernetes.io/cluster/my-eks-cluster" = "shared"
+    "kubernetes.io/cluster/mi-cluster" = "shared" # Changed to match your cluster name
   }
   public_subnet_tags = {
     "kubernetes.io/role/elb"               = "1"
-    "kubernetes.io/cluster/my-eks-cluster" = "shared"
+    "kubernetes.io/cluster/mi-cluster" = "shared" # Changed to match your cluster name
   }
 }
 
-# EKS in Virginia (Account A)
+# EKS Cluster
 module "eks" {
-  source    = "./modules/eks"
-  providers = { aws = aws.virginia }
+  source  = "terraform-aws-modules/eks/aws"
+  version = "~> 19.0"
+  providers = { aws = aws.virginia } # Added provider
 
-  cluster_name    = var.eks_cluster_name
+  cluster_name    = "mi-cluster"
   cluster_version = "1.27"
-  vpc_id          = module.vpc_virginia.vpc_id
-  subnet_ids      = module.vpc_virginia.private_subnets
+  vpc_id          = module.vpc_virginia.vpc_id # Changed from module.vpc to module.vpc_virginia
+  subnet_ids      = module.vpc_virginia.private_subnets # Changed from module.vpc to module.vpc_virginia
 
-  desired_size   = 2
-  max_size       = 3
-  min_size       = 1
-  instance_types = ["t3.small"]
-  capacity_type  = "SPOT"
-  disk_size      = 20
+  # Configuración esencial de node groups
+  eks_managed_node_groups = {
+    main = {
+      min_size     = 1
+      max_size     = 3
+      desired_size = 2
+      instance_types = ["t3.medium"]
+      capacity_type  = "ON_DEMAND"
+      disk_size      = 20
+      
+      # Configuración de IAM para los nodos
+      iam_role_additional_policies = {
+        AmazonEBSCSIDriverPolicy = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+      }
+    }
+  }
 
+  # Configuración de addons recomendados
+  cluster_addons = {
+    aws-ebs-csi-driver = {
+      most_recent = true
+    }
+    coredns = {
+      preserve = true
+    }
+    kube-proxy = {}
+    vpc-cni = {
+      preserve = true
+    }
+  }
 
-  manage_aws_auth = false   # 👈 forward the flag
-  tags = { Environment = "production" }
+  # Configuración de acceso
+  cluster_endpoint_public_access = true
+  cluster_endpoint_private_access = true
+
+  tags = {
+    Environment = "production"
+  }
 }
 
-# Wait for API propagation before touching aws-auth
-resource "time_sleep" "wait_eks_propagation" {
+# Espera para la propagación del cluster
+resource "time_sleep" "wait_eks_propagation" { # Changed from wait_for_cluster to match your dependencies
   depends_on      = [module.eks]
   create_duration = "90s"
 }
@@ -81,7 +110,7 @@ module "hybrid_node_ohio" {
     aws.eks_home = aws.virginia
   }
 
-  eks_cluster_name    = var.eks_cluster_name
+  eks_cluster_name    = "mi-cluster" # Changed from var.eks_cluster_name to match your cluster name
   eks_cluster_region  = "us-east-1"
   hybrid_region       = "us-east-2"
   hybrid_vpc_id       = module.vpc_ohio.vpc_id

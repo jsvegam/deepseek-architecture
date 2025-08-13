@@ -1,36 +1,40 @@
-# Gestiona el ConfigMap aws-auth SOLO con Terraform (sin kubectl, sin import)
-# Requiere que var.account_b_node_role_arn esté definido en variables.tf (y valor en terraform.auto.tfvars)
-
-locals {
-  # Rol cross-account del nodo híbrido (Account B / Ohio)
-  hybrid_map_roles = [
-    {
-      rolearn  = var.account_b_node_role_arn
-      username = "system:node:{{EC2PrivateDNSName}}"
-      groups   = ["system:bootstrappers", "system:nodes"]
-    }
-  ]
+variable "account_b_node_role_arn" {
+  type        = string
+  description = "ARN del rol IAM del nodo híbrido en Account B (Ohio)"
+  validation {
+    condition     = can(regex("^arn:aws:iam::\\d{12}:role/", var.account_b_node_role_arn))
+    error_message = "Debe ser un ARN de rol IAM válido (formato: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME)"
+  }
 }
 
-resource "kubernetes_manifest" "aws_auth" {
-  manifest = {
-    apiVersion = "v1"
-    kind       = "ConfigMap"
-    metadata = {
-      name      = "aws-auth"
-      namespace = "kube-system"
-    }
-    data = {
-      mapRoles = yamlencode(local.hybrid_map_roles)
+resource "kubernetes_config_map_v1" "aws_auth" {
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+    labels = {
+      "app.kubernetes.io/managed-by" = "terraform"
     }
   }
 
-  # Server-Side Apply con field_manager como bloque (sintaxis correcta)
-  field_manager {
-    name            = "terraform"
-    force_conflicts = true
+  data = {
+    mapRoles = yamlencode([
+      # Rol para los nodos del EKS
+      {
+        rolearn  = module.eks.eks_managed_node_groups.main.iam_role_arn
+        username = "system:node:{{EC2PrivateDNSName}}"
+        groups   = ["system:bootstrappers", "system:nodes"]
+      },
+      # Rol cross-account (Account B)
+      {
+        rolearn  = var.account_b_node_role_arn
+        username = "system:node:{{EC2PrivateDNSName}}"
+        groups   = ["system:bootstrappers", "system:nodes"]
+      }
+    ])
   }
 
-  # Espera a que el cluster esté disponible (evita carreras)
-  depends_on = [time_sleep.wait_eks_propagation]
+  depends_on = [
+    time_sleep.wait_for_cluster,
+    module.eks.eks_managed_node_groups
+  ]
 }
