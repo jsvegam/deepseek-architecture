@@ -40,8 +40,9 @@ variable "tags" {
   description = "Tags to apply to EKS resources"
 }
 
-# ⬇️ IMPORTANT: let the root decide who manages aws-auth (we'll set this to false in root)
-variable "manage_aws_auth" {
-  type    = bool
-  default = false
+
+variable "cluster_admin_principal_arn" {
+  type        = string
+  description = "IAM principal to grant cluster-admin via EKS Access Entry"
 }
+

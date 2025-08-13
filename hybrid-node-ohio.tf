@@ -6,7 +6,7 @@ variable "enable_hybrid" {
 module "hybrid_node_ohio" {
   count      = var.enable_hybrid ? 1 : 0
   source     = "./modules/hybrid-node"
-  depends_on = [kubernetes_config_map_v1.aws_auth]
+  depends_on = [kubernetes_manifest.aws_auth]
 
   providers = {
     aws          = aws.ohio
