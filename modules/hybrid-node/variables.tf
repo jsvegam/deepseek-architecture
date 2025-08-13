@@ -3,6 +3,16 @@ variable "eks_cluster_name" {
   type        = string
 }
 
+variable "eks_cluster_region" {
+  description = "Region of the EKS control plane (e.g., us-east-1)"
+  type        = string
+}
+
+variable "hybrid_region" {
+  description = "Region where the EC2/SSM hybrid node runs (e.g., us-east-2)"
+  type        = string
+}
+
 variable "hybrid_vpc_id" {
   description = "VPC ID in the region where the EC2 hybrid node will live (Ohio)"
   type        = string
@@ -42,15 +52,3 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
-
-
-variable "eks_cluster_region" {
-  description = "Region of the EKS control plane (e.g., us-east-1)"
-  type        = string
-}
-
-variable "hybrid_region" {
-  description = "Region where the EC2/SSM hybrid node runs (e.g., us-east-2)"
-  type        = string
-}
-

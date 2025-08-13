@@ -84,6 +84,60 @@ aws ecr get-login-password --region us-east-1 --profile jsvegam.aws.data \
   | docker login --username AWS --password-stdin 368707729092.dkr.ecr.us-east-1.amazonaws.com
 
 
+############################
+
+ACCOUNT_ID=368707729092
+REGION=us-east-1
+REGISTRY=${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com
+REPO=deepseek-app
+
+
+docker build -t ${REPO}:latest .
+
+
+#### to destroy app first manualy
+
+aws ecr list-images --repository-name deepseek-app --region us-east-1 \
+  --query 'imageIds[*]' --output json > /tmp/ecr_imgs.json
+aws ecr batch-delete-image --repository-name deepseek-app \
+  --image-ids file:///tmp/ecr_imgs.json --region us-east-1 || true
+
+## Destroy in layers (order matters)
+Break infra into layers (and ideally into separate Terraform states):
+
+Layer 4 – Apps (Helm/K8s resources)
+
+Layer 3 – Platform add-ons (ALB Controller, metrics-server, CSI, etc.)
+
+Layer 2 – EKS (cluster + node groups)
+
+Layer 1 – Networking (VPC/subnets/NAT/IGW)
+
+Side layer – ECR (repos)
+
+If all is in one state, destroy top→down with targets:
+
+
+
+
+#########
+aws eks describe-cluster --name my-eks-cluster --region us-east-1 --profile jsvegam.aws.data --query 'cluster.{Name:name,Status:status}'
+
+
+aws ecr get-login-password --region us-east-1 --profile jsvegam.aws.data \
+  | docker login --username AWS --password-stdin 368707729092.dkr.ecr.us-east-1.amazonaws.com
+
+
+  aws eks list-clusters \
+  --region us-east-1 \
+  --profile jsvegam.aws.data
+
+
+
+
+
+
+
 
 
 

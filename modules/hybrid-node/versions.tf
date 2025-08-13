@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source = "hashicorp/aws"
-      # 👇 allow the module to accept an additional alias from the parent
+      # allow parent to pass an extra alias for EKS control-plane region/account
       configuration_aliases = [aws.eks_home]
     }
   }

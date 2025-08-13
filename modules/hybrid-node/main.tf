@@ -1,10 +1,11 @@
 # modules/hybrid-node/main.tf
-#
-# This module expects TWO provider configs passed from root:
-#   - aws          → region for EC2/SSM (e.g., us-east-2 / Ohio)
-#   - aws.eks_home → region where your EKS control plane lives (e.g., us-east-1 / Virginia)
+# Proveedores esperados desde el root:
+#   aws          -> Cuenta B, us-east-2 (EC2/SSM/IAM del nodo)
+#   aws.eks_home -> Cuenta A, us-east-1 (control plane de EKS)
 
-# -------- IAM for EC2 (Session Manager on the instance) --------
+############################################
+# IAM para EC2 (Session Manager en la instancia) [Cuenta B]
+############################################
 
 data "aws_iam_policy" "ssm_core" {
   arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
@@ -46,7 +47,9 @@ resource "aws_iam_instance_profile" "hybrid_profile" {
   tags = var.tags
 }
 
-# -------- "On-prem" SSM role + Hybrid Activation (used by nodeadm install) --------
+############################################
+# Rol "on-prem" para SSM + Activación híbrida [Cuenta B]
+############################################
 
 data "aws_iam_policy_document" "hybrid_onprem_trust" {
   statement {
@@ -72,12 +75,14 @@ resource "aws_iam_role_policy_attachment" "hybrid_onprem_ssm_core" {
 resource "aws_ssm_activation" "activation" {
   name               = "hybrid-activation"
   description        = "Activation for EKS hybrid node lab"
-  iam_role           = aws_iam_role.hybrid_onprem_role.name   # must trust ssm.amazonaws.com
+  iam_role           = aws_iam_role.hybrid_onprem_role.name
   registration_limit = var.ssm_registration_limit
   depends_on         = [aws_iam_role_policy_attachment.hybrid_onprem_ssm_core]
 }
 
-# -------- Networking + EC2 (hybrid node host) --------
+############################################
+# Networking + EC2 [Cuenta B]
+############################################
 
 resource "aws_security_group" "hybrid_sg" {
   name        = "hybrid-ec2-sg"
@@ -118,33 +123,38 @@ resource "aws_instance" "hybrid_node" {
 set -e
 apt-get update -y
 apt-get install -y curl jq
-# SSM agent is preinstalled on many Ubuntu AMIs; if not, you could install/enable it here.
+# Si ssm-agent no está, puedes instalarlo/activarlo aquí.
 EOF
 }
 
-# -------- OPTIONAL: EKS Access Entry in control-plane region --------
-# These must run with the EKS control-plane provider alias: aws.eks_home
+############################################
+# Access Entry en el control plane [Cuenta A / us-east-1]
+############################################
 
 data "aws_partition" "current" {}
 
+# Validamos que el cluster exista en el provider aws.eks_home
+data "aws_eks_cluster" "home" {
+  count    = var.create_access_entry ? 1 : 0
+  provider = aws.eks_home
+  name     = var.eks_cluster_name
+}
+
+# Para nodos híbridos no se asocian "access policies" (son para usuarios/roles STANDARD).
+# Solo se crea el Access Entry con tipo de nodo.
 resource "aws_eks_access_entry" "hybrid_role_entry" {
   count         = var.create_access_entry ? 1 : 0
   provider      = aws.eks_home
-  cluster_name  = var.eks_cluster_name
+  cluster_name  = data.aws_eks_cluster.home[0].name
   principal_arn = aws_iam_role.hybrid_ec2_role.arn
-  type          = "STANDARD"
+
+  # Usa HYBRID_LINUX si tu provider lo soporta; si no, EC2_LINUX
+  type = "HYBRID_LINUX"
+  # type = "EC2_LINUX"
 }
 
+/*  No usar para nodos:
 resource "aws_eks_access_policy_association" "hybrid_node_policy" {
-  count         = var.create_access_entry ? 1 : 0
-  provider      = aws.eks_home
-  cluster_name  = var.eks_cluster_name
-  principal_arn = aws_iam_role.hybrid_ec2_role.arn
-  policy_arn    = "arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/AmazonEKSWorkerNodePolicy"
-
-  access_scope {
-    type = "cluster"
-  }
-
-  depends_on = [aws_eks_access_entry.hybrid_role_entry]
+  count = 0
 }
+*/
