@@ -8,52 +8,46 @@ terraform {
   }
 }
 
-# Wrapper al módulo oficial
+# Wrapper del módulo oficial EKS v21
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 21.0"
 
-  # === nombres v21 ===
   name               = var.cluster_name
   kubernetes_version = var.kubernetes_version
 
   vpc_id     = var.vpc_id
   subnet_ids = var.subnet_ids
 
-  # Autenticación (Access Entries / CAM)
   authentication_mode = var.authentication_mode
 
-  # Evita que el módulo cree un admin por defecto (evita system:masters)
+  # Evita el admin por defecto (que usa system:masters)
   enable_cluster_creator_admin_permissions = false
 
-  # === endpoint flags v21 ===
   endpoint_public_access  = var.cluster_endpoint_public_access
   endpoint_private_access = var.cluster_endpoint_private_access
 
-  # Hybrid Nodes (nombre v21 sin "cluster_")
+  # Hybrid networking (si aplicara)
   remote_network_config = {
     remote_node_networks = { cidrs = [var.remote_node_cidr] }
     remote_pod_networks  = { cidrs = [var.remote_pod_cidr] }
   }
 
-  # Access entries (admin) — usa Access Policy en vez de kubernetes_groups
+  # Access entry admin con CAM Policy
   access_entries = {
     admin = {
       principal_arn = var.cluster_admin_principal_arn
       type          = "STANDARD"
-
       access_policy_associations = {
         cluster_admin = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-          access_scope = {
-            type = "cluster"
-          }
+          policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = { type = "cluster" }
         }
       }
     }
   }
 
-  # Node group administrado
+  # Managed Node Group
   eks_managed_node_groups = {
     default = {
       desired_size   = var.desired_size
@@ -63,7 +57,6 @@ module "eks" {
       capacity_type  = var.capacity_type
       disk_size      = var.disk_size
 
-      # Evita SSM: define tipo y AMI explícita
       ami_type = "AL2023_x86_64_STANDARD"
       ami_id   = var.managed_node_ami_id
     }

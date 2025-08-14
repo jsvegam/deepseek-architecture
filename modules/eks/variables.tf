@@ -1,97 +1,89 @@
-# Entradas desde el root module (tu main.tf)
-
 variable "cluster_name" {
-  description = "Nombre del cluster EKS"
+  description = "Nombre del clúster EKS."
   type        = string
 }
 
 variable "kubernetes_version" {
-  description = "Versión menor de Kubernetes (1.29/1.30/1.31)"
+  description = "Versión de Kubernetes para el clúster (p. ej. 1.29)."
   type        = string
 }
 
 variable "vpc_id" {
-  description = "VPC ID del cluster"
+  description = "ID de la VPC donde vive el clúster."
   type        = string
 }
 
 variable "subnet_ids" {
-  description = "Subnets del cluster (normalmente privadas)"
+  description = "Subnets donde se desplegarán los nodos/ENIs del clúster."
   type        = list(string)
 }
 
 variable "authentication_mode" {
-  description = "Modo de autenticación (API, CONFIG_MAP o API_AND_CONFIG_MAP)"
+  description = "Modo de autenticación de EKS (recomendado: API_AND_CONFIG_MAP)."
   type        = string
-  default     = "API_AND_CONFIG_MAP"
 }
 
 variable "cluster_endpoint_public_access" {
-  description = "Habilita endpoint público"
+  description = "Si el endpoint del API server es accesible públicamente."
   type        = bool
-  default     = true
 }
 
 variable "cluster_endpoint_private_access" {
-  description = "Habilita endpoint privado"
+  description = "Si el endpoint del API server es accesible privadamente por la VPC."
   type        = bool
-  default     = false
 }
 
 variable "remote_node_cidr" {
-  description = "CIDR de la red donde viven los nodos híbridos"
+  description = "CIDR de los nodos remotos (Hybrid Nodes) si aplica."
   type        = string
 }
 
 variable "remote_pod_cidr" {
-  description = "CIDR de los pods que correrán en nodos híbridos"
+  description = "CIDR de los pods remotos (Hybrid Nodes) si aplica."
   type        = string
 }
 
 variable "cluster_admin_principal_arn" {
-  description = "ARN del principal admin del cluster (rol/usuario IAM)"
+  description = "ARN del principal (user/role) que tendrá permisos de admin vía CAM."
   type        = string
 }
 
 variable "desired_size" {
+  description = "Tamaño deseado del Managed Node Group."
   type        = number
-  description = "Tamaño deseado del node group"
 }
 
 variable "min_size" {
+  description = "Tamaño mínimo del Managed Node Group."
   type        = number
-  description = "Tamaño mínimo del node group"
 }
 
 variable "max_size" {
+  description = "Tamaño máximo del Managed Node Group."
   type        = number
-  description = "Tamaño máximo del node group"
 }
 
 variable "instance_types" {
+  description = "Tipos de instancia para el Managed Node Group."
   type        = list(string)
-  description = "Tipos de instancia del node group"
 }
 
 variable "capacity_type" {
+  description = "Tipo de capacidad del Node Group (ON_DEMAND o SPOT)."
   type        = string
-  description = "SPOT u ON_DEMAND"
 }
 
 variable "disk_size" {
+  description = "Tamaño de disco (GiB) para los nodos del Node Group."
   type        = number
-  description = "Tamaño de disco por nodo (GiB)"
+}
+
+variable "managed_node_ami_id" {
+  description = "AMI explícita para el Node Group (EKS-Optimized AL2023 para tu versión)."
+  type        = string
 }
 
 variable "tags" {
-  description = "Etiquetas comunes"
+  description = "Tags comunes a aplicar."
   type        = map(string)
-  default     = {}
-}
-
-
-variable "managed_node_ami_id" {
-  description = "AMI ID para el EKS managed node group (evita consulta SSM)"
-  type        = string
-  default     = null
 }

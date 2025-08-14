@@ -1,31 +1,25 @@
 terraform {
-  required_version = ">= 1.5.7"
+  required_version = ">= 1.6.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 6.0"
+      version = ">= 5.50"
     }
   }
 }
 
-# Default (opcional). Útil si tienes recursos sin alias.
-provider "aws" {
-  region = var.aws_region # "us-east-1" por defecto en tu variables.tf
-  # profile     = "tu-perfil"          # <- si usas credenciales por perfil
-  # assume_role { role_arn = "arn:aws:iam::<acct>:role/Role" }  # <- si es cross-account
+variable "aws_region" {
+  description = "Región primaria (Virginia)."
+  type        = string
+  default     = "us-east-1"
 }
 
-# Alias para Virginia (us-east-1) — requerido por:
-# providers = { aws = aws.virginia } en tus módulos
 provider "aws" {
   alias  = "virginia"
-  region = "us-east-1"
-  # profile     = "tu-perfil-virginia"
-  # assume_role { role_arn = "arn:aws:iam::<acct-A>:role/RoleVirginia" }
+  region = var.aws_region
+  # profile = "default"  # opcional
 }
 
-# Alias para Ohio (us-east-2) — SOLO si usas archivos/mods en Ohio
-# (si dejaste Ohio comentado puedes omitir este bloque)
 provider "aws" {
   alias  = "ohio"
   region = "us-east-2"
