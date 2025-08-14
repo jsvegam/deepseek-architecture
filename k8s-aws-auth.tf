@@ -7,17 +7,18 @@ locals {
 }
 
 resource "kubernetes_manifest" "aws_auth" {
+  count = var.manage_aws_auth_configmap ? 1 : 0
+
   manifest = {
     apiVersion = "v1"
     kind       = "ConfigMap"
-    metadata = { name = "aws-auth", namespace = "kube-system" }
-    data     = { mapRoles = yamlencode(local.hybrid_map_roles) }
+    metadata   = { name = "aws-auth", namespace = "kube-system" }
+    data       = { mapRoles = "[]" }
   }
 
-  field_manager {
-    name            = "terraform"
-    force_conflicts = true
-  }
-
-  depends_on = [module.eks, time_sleep.wait_eks_propagation]
+  # Asegúrate de aplicar solo cuando el cluster esté listo
+  depends_on = [
+    module.eks,
+    time_sleep.wait_eks_propagation
+  ]
 }

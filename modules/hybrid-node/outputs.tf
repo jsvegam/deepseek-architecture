@@ -20,7 +20,7 @@ output "public_ip" {
 }
 
 output "nodeadm_commands" {
-  value = <<-EOT
+  value       = <<-EOT
 # Install nodeadm (Ubuntu x86_64):
 curl -OL 'https://hybrid-assets.eks.amazonaws.com/releases/latest/bin/linux/amd64/nodeadm' && \
 chmod +x nodeadm && sudo mv nodeadm /usr/local/bin/

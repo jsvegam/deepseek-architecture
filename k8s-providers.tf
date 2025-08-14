@@ -16,7 +16,7 @@ provider "kubernetes" {
     command     = "aws"
     args = [
       "eks", "get-token",
-      "--cluster-name", var.eks_cluster_name,   # Debe coincidir EXACTO con el nombre creado
+      "--cluster-name", var.eks_cluster_name, # Debe coincidir EXACTO con el nombre creado
       "--region", "us-east-1",
       "--profile", "jsvegam.aws.data"
     ]

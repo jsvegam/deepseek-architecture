@@ -21,7 +21,7 @@ resource "aws_security_group" "msk_sg" {
 resource "aws_msk_cluster" "msk_cluster" {
   cluster_name           = "my-msk-cluster"
   kafka_version          = "3.4.0"
-  number_of_broker_nodes = 3  # Must match AZ count (3 AZs → 3 brokers)
+  number_of_broker_nodes = 3 # Must match AZ count (3 AZs → 3 brokers)
 
   broker_node_group_info {
     instance_type   = "kafka.t3.small"
@@ -30,7 +30,7 @@ resource "aws_msk_cluster" "msk_cluster" {
 
     storage_info {
       ebs_storage_info {
-        volume_size = 10  # Minimum size
+        volume_size = 10 # Minimum size
       }
     }
   }

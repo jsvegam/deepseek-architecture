@@ -25,7 +25,7 @@ resource "local_file" "kubeconfig" {
         exec = {
           apiVersion = "client.authentication.k8s.io/v1beta1"
           command    = "aws"
-          args       = [
+          args = [
             "eks", "get-token",
             "--cluster-name", var.eks_cluster_name,
             "--region", "us-east-1",

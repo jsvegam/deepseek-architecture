@@ -5,7 +5,7 @@ resource "aws_s3_bucket" "bucket" {
 
 # Lifecycle Configuration (corrected)
 resource "aws_s3_bucket_lifecycle_configuration" "cost_optimization" {
-  bucket = aws_s3_bucket.bucket.id  # Now references declared bucket
+  bucket = aws_s3_bucket.bucket.id # Now references declared bucket
 
   rule {
     id = "cost-saving"
